@@ -71,7 +71,6 @@ class IrisNotificationService : NotificationListenerService() {
         }
 
         val rawDump = dumpBundle(extras).toString()
-        // test
 
         val event = NotificationEvent(
             timestamp = System.currentTimeMillis(),
