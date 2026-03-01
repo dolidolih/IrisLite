@@ -1,13 +1,15 @@
-//notification parser : https://github.com/mooner1022/StarLight/blob/08181968ab72eec6c1f9378247beb5a606dc0ef8/app/src/main/java/dev/mooner/starlight/listener/specs/AndroidRParserSpec.kt
-
 package party.qwer.irislite.service
 
 import android.app.Notification
 import android.app.Person
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Base64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,6 +25,7 @@ import party.qwer.irislite.models.IrisJsonData
 import party.qwer.irislite.models.NotificationEvent
 import party.qwer.irislite.models.NotificationPayload
 import party.qwer.irislite.models.ReplyAction
+import java.io.ByteArrayOutputStream
 import java.util.Arrays
 
 class IrisNotificationService : NotificationListenerService() {
@@ -70,6 +73,11 @@ class IrisNotificationService : NotificationListenerService() {
             e.printStackTrace()
         }
 
+        // 1. Grab the raw extra on the main thread
+        val largeIconExtra = try {
+            extras.get(Notification.EXTRA_LARGE_ICON)
+        } catch (e: Exception) { null }
+
         val rawDump = dumpBundle(extras).toString()
 
         val event = NotificationEvent(
@@ -95,7 +103,32 @@ class IrisNotificationService : NotificationListenerService() {
             }
         }
 
+        // 2. Process the icon and compress inside the IO coroutine
         coroutineScope.launch {
+            var profileImageBase64: String? = null
+
+            try {
+                // Safely extract the Bitmap whether it's an older raw Bitmap or a newer Icon object
+                val bitmapToCompress: Bitmap? = when {
+                    largeIconExtra is Bitmap -> largeIconExtra
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && largeIconExtra is Icon -> {
+                        // Load the drawable using the Service's Context
+                        val drawable = largeIconExtra.loadDrawable(this@IrisNotificationService)
+                        // Cast to BitmapDrawable to get the underlying Bitmap
+                        (drawable as? BitmapDrawable)?.bitmap
+                    }
+                    else -> null
+                }
+
+                if (bitmapToCompress != null) {
+                    val baos = ByteArrayOutputStream()
+                    bitmapToCompress.compress(Bitmap.CompressFormat.JPEG, 70, baos)
+                    profileImageBase64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
             val innerJson = IrisJsonData(
                 id = chatLogId.toString(),
                 chat_id = roomId,
@@ -108,6 +141,8 @@ class IrisNotificationService : NotificationListenerService() {
                 room = room,
                 sender = senderName,
                 is_lite = true,
+                is_group_chat = isGroupChat,
+                profile_image = profileImageBase64,
                 json = innerJson
             )
 
