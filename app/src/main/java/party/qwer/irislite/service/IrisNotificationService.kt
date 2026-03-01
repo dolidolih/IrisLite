@@ -28,6 +28,11 @@ import party.qwer.irislite.models.ReplyAction
 import java.io.ByteArrayOutputStream
 import java.util.Arrays
 
+/*
+Parser reference :
+https://github.com/mooner1022/StarLight/blob/nightly/app/src/main/java/dev/mooner/starlight/listener/specs/AndroidRParserSpec.kt
+*/
+
 class IrisNotificationService : NotificationListenerService() {
     private val httpClient = OkHttpClient()
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
