@@ -159,19 +159,32 @@ object IrisLiteServer {
                     setPackage("com.kakao.talk")
                     type = "image/*"
                     putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
-                    putExtra("key_id", room)
+                    putExtra("key_id", room.toLongOrNull() ?: 0L)
                     putExtra("key_type", 1)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    putExtra("key_from_direct_share", true)
+
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
                 }
+
                 try {
                     context.startActivity(intent)
 
-                    delay(1500)
-                    val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-                        addCategory(Intent.CATEGORY_HOME)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(homeIntent)
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        try {
+                            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                                addCategory(Intent.CATEGORY_HOME)
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            }
+                            context.startActivity(homeIntent)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }, 3000)
+
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }

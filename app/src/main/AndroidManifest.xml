@@ -7,9 +7,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <!-- For Android 14+ (API 34), foreground services require a specific type -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:name=".IrisLiteApplication"
@@ -21,7 +20,6 @@
         android:theme="@style/Theme.IrisLite"
         android:usesCleartextTraffic="true">
 
-        <!-- Updated Activity Path (.ui.MainActivity) -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
@@ -32,14 +30,12 @@
             </intent-filter>
         </activity>
 
-        <!-- Foreground Service for keeping Ktor alive in the background -->
         <service
             android:name=".service.IrisForegroundService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <!-- Notification Listener Service -->
         <service
             android:name=".service.IrisNotificationService"
             android:label="IrisLite Notification Listener"
