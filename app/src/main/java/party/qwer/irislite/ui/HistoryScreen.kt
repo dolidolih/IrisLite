@@ -26,7 +26,6 @@ fun HistoryScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 32.dp, top = 8.dp)
     ) {
-        // --- Section 1: Stored Room List ---
         item {
             Text("Stored Room List", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         }
@@ -55,7 +54,6 @@ fun HistoryScreen() {
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // --- Section 2: Notification History ---
         item {
             Text("Notification History (Latest 10)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         }

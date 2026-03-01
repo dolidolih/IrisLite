@@ -13,9 +13,9 @@
     <application
         android:name=".IrisLiteApplication"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/irislitelogo"
         android:label="IrisLite"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/irislitelogo_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.IrisLite"
         android:usesCleartextTraffic="true">
@@ -45,6 +45,15 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_path" />
+        </provider>
 
     </application>
 </manifest>

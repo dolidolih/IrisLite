@@ -14,9 +14,7 @@ object AppConfig {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
-    var isServiceEnabled: Boolean
-        get() = prefs.getBoolean("isServiceEnabled", false)
-        set(value) = prefs.edit().putBoolean("isServiceEnabled", value).apply()
+    var isServiceEnabled: Boolean = false
 
     var webEndpoint: String
         get() = prefs.getString("webEndpoint", "") ?: ""

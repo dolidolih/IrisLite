@@ -136,18 +136,24 @@ object IrisLiteServer {
 
     private fun handleImageReply(context: Context, room: String, base64Images: List<String>) {
         ReplyManager.enqueue {
+            val savedFiles = mutableListOf<java.io.File>()
             val uris = base64Images.mapNotNull { base64 ->
                 try {
                     val bytes = Base64.decode(base64, Base64.DEFAULT)
-                    val values = ContentValues().apply {
-                        put(MediaStore.Images.Media.DISPLAY_NAME, "iris_img_${System.currentTimeMillis()}.png")
-                        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                    }
-                    val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                    if (uri != null) {
-                        context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
-                    }
-                    uri
+
+                    // 1. Create a file in the internal cache directory (Not visible in Gallery)
+                    val fileName = "iris_temp_${System.currentTimeMillis()}.png"
+                    val file = java.io.File(context.cacheDir, fileName)
+
+                    file.outputStream().use { it.write(bytes) }
+                    savedFiles.add(file)
+
+                    // 2. Get URI using FileProvider (Requires setup in AndroidManifest.xml)
+                    androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        file
+                    )
                 } catch (e: Exception) {
                     e.printStackTrace()
                     null
@@ -163,15 +169,22 @@ object IrisLiteServer {
                     putExtra("key_type", 1)
                     putExtra("key_from_direct_share", true)
 
-                    addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or
-                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                                Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 }
 
                 try {
                     context.startActivity(intent)
+
+                    CoroutineScope(Dispatchers.IO).launch {
+                        delay(300_000)
+                        savedFiles.forEach { file ->
+                            if (file.exists()) {
+                                val deleted = file.delete()
+                                android.util.Log.d("IrisCleanup", "Deleted ${file.name}: $deleted")
+                            }
+                        }
+                    }
 
                     android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                         try {
@@ -180,9 +193,7 @@ object IrisLiteServer {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                             }
                             context.startActivity(homeIntent)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
+                        } catch (e: Exception) { e.printStackTrace() }
                     }, 3000)
 
                 } catch (e: Exception) {

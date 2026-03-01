@@ -73,7 +73,6 @@ class IrisNotificationService : NotificationListenerService() {
             e.printStackTrace()
         }
 
-        // 1. Grab the raw extra on the main thread
         val largeIconExtra = try {
             extras.get(Notification.EXTRA_LARGE_ICON)
         } catch (e: Exception) { null }
@@ -103,18 +102,14 @@ class IrisNotificationService : NotificationListenerService() {
             }
         }
 
-        // 2. Process the icon and compress inside the IO coroutine
         coroutineScope.launch {
             var profileImageBase64: String? = null
 
             try {
-                // Safely extract the Bitmap whether it's an older raw Bitmap or a newer Icon object
                 val bitmapToCompress: Bitmap? = when {
                     largeIconExtra is Bitmap -> largeIconExtra
                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && largeIconExtra is Icon -> {
-                        // Load the drawable using the Service's Context
                         val drawable = largeIconExtra.loadDrawable(this@IrisNotificationService)
-                        // Cast to BitmapDrawable to get the underlying Bitmap
                         (drawable as? BitmapDrawable)?.bitmap
                     }
                     else -> null

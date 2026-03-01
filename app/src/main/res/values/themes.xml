@@ -1,7 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Use a NoActionBar theme so Compose can handle the Top Bar natively -->
     <style name="Theme.IrisLite" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- Modern Android Purple/Indigo tones -->
         <item name="colorPrimary">@color/purple_500</item>
         <item name="colorPrimaryVariant">@color/purple_700</item>
         <item name="colorOnPrimary">@color/white</item>
@@ -10,7 +8,6 @@
         <item name="colorSecondaryVariant">@color/teal_700</item>
         <item name="colorOnSecondary">@color/black</item>
 
-        <!-- Let Compose handle the background. Just make the status bar transparent or match the top bar -->
         <item name="android:statusBarColor">#F3F4F6</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>

@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import party.qwer.irislite.AppConfig
 
 class IrisForegroundService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
@@ -17,7 +18,7 @@ class IrisForegroundService : Service() {
         super.onCreate()
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "IrisLite::ServerWakeLock")
-        wakeLock?.acquire(10 * 60 * 1000L /*10 minutes fallback if not released*/)
+        wakeLock?.acquire(10 * 60 * 1000L)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -38,6 +39,9 @@ class IrisForegroundService : Service() {
         }
 
         startForeground(1001, notification)
+
+        AppConfig.isServiceEnabled = true
+
         IrisLiteServer.start(applicationContext)
 
         return START_STICKY
@@ -46,8 +50,20 @@ class IrisForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         IrisLiteServer.stop()
-        wakeLock?.let {
-            if (it.isHeld) it.release()
+
+        AppConfig.isServiceEnabled = false
+
+        try {
+            wakeLock?.let {
+                if (it.isHeld) it.release()
+            }
+        } catch (e: Exception) { e.printStackTrace() }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
         }
     }
 

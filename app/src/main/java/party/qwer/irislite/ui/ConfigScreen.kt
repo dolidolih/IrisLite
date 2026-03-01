@@ -1,6 +1,7 @@
 package party.qwer.irislite.ui
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
@@ -51,12 +52,16 @@ fun ConfigScreen() {
     var testMessage by remember { mutableStateOf("") }
     var configChanged by remember { mutableStateOf(false) }
     var hasNotificationPermission by remember { mutableStateOf(false) }
+    var hasOverlayPermission by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                isEnabled = AppConfig.isServiceEnabled
+
                 val enabledPackages = NotificationManagerCompat.getEnabledListenerPackages(context)
                 hasNotificationPermission = enabledPackages.contains(context.packageName)
+                hasOverlayPermission = Settings.canDrawOverlays(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -64,6 +69,13 @@ fun ConfigScreen() {
     }
 
     val requestPermission = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+    val requestOverlayPermission = {
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:${context.packageName}")
+        )
+        context.startActivity(intent)
+    }
 
     val darkSurface = Color(0xFF1E1E1E)
     val textPrimary = Color(0xFFE3E3E3)
@@ -165,6 +177,17 @@ fun ConfigScreen() {
                             Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("알림수신 권한설정")
+                        }
+                    }
+
+                    if (!hasOverlayPermission) {
+                        Button(
+                            onClick = requestOverlayPermission, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Icon(Icons.Default.Layers, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("앱 위에 그리기 권한설정")
                         }
                     }
                 }

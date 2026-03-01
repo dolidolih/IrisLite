@@ -24,8 +24,8 @@ data class NotificationPayload(
     val room: String,
     val sender: String,
     val is_lite: Boolean = true,
-    val is_group_chat: Boolean,   // Added field
-    val profile_image: String?,   // Added field (Base64 string)
+    val is_group_chat: Boolean,
+    val profile_image: String?,
     val json: IrisJsonData
 )
 
