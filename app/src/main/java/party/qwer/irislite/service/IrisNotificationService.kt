@@ -2,6 +2,7 @@ package party.qwer.irislite.service
 
 import android.app.Notification
 import android.app.Person
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Icon
@@ -164,6 +165,19 @@ class IrisNotificationService : NotificationListenerService() {
                 }
             }
         }
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        if (AppConfig.isServiceEnabled) {
+            val serviceIntent = Intent(this, IrisForegroundService::class.java)
+            startForegroundService(serviceIntent)
+        }
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        requestRebind(android.content.ComponentName(this, IrisNotificationService::class.java))
     }
 
     private fun extractAndStoreReplyAction(notification: Notification, roomKey: String) {
