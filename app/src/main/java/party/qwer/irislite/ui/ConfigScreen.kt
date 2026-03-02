@@ -51,8 +51,12 @@ fun ConfigScreen() {
     var testRoomExpanded by remember { mutableStateOf(false) }
     var testMessage by remember { mutableStateOf("") }
     var configChanged by remember { mutableStateOf(false) }
+
     var hasNotificationPermission by remember { mutableStateOf(false) }
     var hasOverlayPermission by remember { mutableStateOf(false) }
+
+    var showNotificationDialog by remember { mutableStateOf(false) }
+    var showOverlayDialog by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -68,7 +72,9 @@ fun ConfigScreen() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val requestPermission = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+    val requestPermission = {
+        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    }
     val requestOverlayPermission = {
         val intent = Intent(
             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -83,6 +89,64 @@ fun ConfigScreen() {
         focusedTextColor = textPrimary, unfocusedTextColor = textPrimary,
         focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = Color(0xFF444444)
     )
+
+    if (showNotificationDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotificationDialog = false },
+            containerColor = darkSurface,
+            titleContentColor = textPrimary,
+            textContentColor = textPrimary,
+            shape = RoundedCornerShape(16.dp),
+            title = {
+                Text(text = "[필수] 알림 읽기 권한 안내", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(text = "IrisLite은 알림기반으로 작동하는 앱으로 알림 읽기 권한은 앱 기능을 수행하기 위한 필수 권한입니다. 이 권한을 설정하지 않으면 앱의 기능 대부분을 이용할 수 없습니다.\n\n권한 설정 화면으로 이동하시겠습니까?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showNotificationDialog = false
+                    requestPermission()
+                }) {
+                    Text("동의 및 설정", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNotificationDialog = false }) {
+                    Text("미동의", color = Color(0xFFAAAAAA))
+                }
+            }
+        )
+    }
+
+    if (showOverlayDialog) {
+        AlertDialog(
+            onDismissRequest = { showOverlayDialog = false },
+            containerColor = darkSurface,
+            titleContentColor = textPrimary,
+            textContentColor = textPrimary,
+            shape = RoundedCornerShape(16.dp),
+            title = {
+                Text(text = "[선택] 다른 앱 위에 표시 권한 안내", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text(text = "사진 공유 후 원활하게 홈 화면으로 이동하고, 알림 수신을 지속적으로 하기 위해 필요한 권한입니다.\n\n선택 권한으로 미사용 시에도 앱 이용은 가능하나, 지속적인 알림 수신이 어려워질 수 있습니다.\n\n설정 화면으로 이동하시겠습니까?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showOverlayDialog = false
+                    requestOverlayPermission()
+                }) {
+                    Text("동의 및 설정", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOverlayDialog = false }) {
+                    Text("미동의", color = Color(0xFFAAAAAA))
+                }
+            }
+        )
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -171,23 +235,25 @@ fun ConfigScreen() {
 
                     if (!hasNotificationPermission) {
                         Button(
-                            onClick = requestPermission, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                            onClick = { showNotificationDialog = true },
+                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                         ) {
                             Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("알림수신 권한설정")
+                            Text("[필수] 알림수신 권한설정")
                         }
                     }
 
                     if (!hasOverlayPermission) {
                         Button(
-                            onClick = requestOverlayPermission, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                            onClick = { showOverlayDialog = true },
+                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                         ) {
                             Icon(Icons.Default.Layers, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("앱 위에 그리기 권한설정")
+                            Text("[선택] 앱 위에 그리기 권한설정")
                         }
                     }
                 }
@@ -260,9 +326,7 @@ fun ConfigScreen() {
                             focusManager.clearFocus()
                             CoroutineScope(Dispatchers.IO).launch {
                                 val client = OkHttpClient()
-
                                 val jsonString = """{"type":"text","room":"$testRoom","data":"$testMessage"}"""
-
                                 val body = jsonString.toRequestBody("application/json".toMediaType())
                                 val req = Request.Builder().url("http://127.0.0.1:${AppConfig.serverPort}/reply").post(body).build()
 
