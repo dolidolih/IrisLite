@@ -1,7 +1,9 @@
 package party.qwer.irislite.ui
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -53,6 +55,7 @@ fun ConfigScreen() {
 
     var hasNotificationPermission by remember { mutableStateOf(false) }
     var hasOverlayPermission by remember { mutableStateOf(false) }
+    var hasBatteryPermission by remember { mutableStateOf(false) }
 
     var showNotificationDialog by remember { mutableStateOf(false) }
     var showOverlayDialog by remember { mutableStateOf(false) }
@@ -65,6 +68,9 @@ fun ConfigScreen() {
                 val enabledPackages = NotificationManagerCompat.getEnabledListenerPackages(context)
                 hasNotificationPermission = enabledPackages.contains(context.packageName)
                 hasOverlayPermission = Settings.canDrawOverlays(context)
+
+                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                hasBatteryPermission = pm.isIgnoringBatteryOptimizations(context.packageName)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -79,6 +85,12 @@ fun ConfigScreen() {
             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
             Uri.parse("package:${context.packageName}")
         )
+        context.startActivity(intent)
+    }
+    val requestBatteryPermission = {
+        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = Uri.parse("package:${context.packageName}")
+        }
         context.startActivity(intent)
     }
 
@@ -249,6 +261,18 @@ fun ConfigScreen() {
                             Icon(Icons.Default.Layers, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("[선택] 앱 위에 그리기 권한설정")
+                        }
+                    }
+
+                    if (!hasBatteryPermission) {
+                        Button(
+                            onClick = { requestBatteryPermission() },
+                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Icon(Icons.Default.BatteryAlert, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("[필수] 백그라운드 배터리 제한 해제")
                         }
                     }
                 }
