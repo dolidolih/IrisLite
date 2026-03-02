@@ -2,7 +2,6 @@ package party.qwer.irislite.ui
 
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -191,11 +190,7 @@ fun ConfigScreen() {
                                 AppConfig.isServiceEnabled = checked
                                 val serviceIntent = Intent(context, IrisForegroundService::class.java)
                                 if (checked) {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                        context.startForegroundService(serviceIntent)
-                                    } else {
-                                        context.startService(serviceIntent)
-                                    }
+                                    context.startForegroundService(serviceIntent)
                                     Toast.makeText(context, "Services Started. Check Permissions.", Toast.LENGTH_LONG).show()
                                     configChanged = false
                                 } else {

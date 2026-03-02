@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import party.qwer.irislite.AppConfig
@@ -23,20 +22,12 @@ class IrisForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
-        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val notification =
             Notification.Builder(this, "iris_service_channel")
                 .setContentTitle("IrisLite Background Service")
                 .setContentText("Ktor server and listeners are active")
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .build()
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(this)
-                .setContentTitle("IrisLite Background Service")
-                .setContentText("Ktor server and listeners are active")
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .build()
-        }
 
         startForeground(1001, notification)
 
@@ -59,25 +50,18 @@ class IrisForegroundService : Service() {
             }
         } catch (e: Exception) { e.printStackTrace() }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } else {
-            @Suppress("DEPRECATION")
-            stopForeground(true)
-        }
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "iris_service_channel",
-                "IrisLite Service",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            "iris_service_channel",
+            "IrisLite Service",
+            NotificationManager.IMPORTANCE_LOW
+        )
+        val manager = getSystemService(NotificationManager::class.java)
+        manager?.createNotificationChannel(channel)
     }
 }

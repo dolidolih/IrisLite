@@ -13,7 +13,6 @@ import android.util.Base64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -26,7 +25,6 @@ import party.qwer.irislite.models.NotificationEvent
 import party.qwer.irislite.models.NotificationPayload
 import party.qwer.irislite.models.ReplyAction
 import java.io.ByteArrayOutputStream
-import java.util.Arrays
 
 /*
 Parser reference :
@@ -111,12 +109,13 @@ class IrisNotificationService : NotificationListenerService() {
             var profileImageBase64: String? = null
 
             try {
-                val bitmapToCompress: Bitmap? = when {
-                    largeIconExtra is Bitmap -> largeIconExtra
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && largeIconExtra is Icon -> {
+                val bitmapToCompress: Bitmap? = when (largeIconExtra) {
+                    is Bitmap -> largeIconExtra
+                    is Icon -> {
                         val drawable = largeIconExtra.loadDrawable(this@IrisNotificationService)
                         (drawable as? BitmapDrawable)?.bitmap
                     }
+
                     else -> null
                 }
 
@@ -193,7 +192,7 @@ class IrisNotificationService : NotificationListenerService() {
             if (value is Bundle) {
                 map[key] = dumpBundle(value)
             } else if (value != null && value.javaClass.isArray) {
-                map[key] = Arrays.toString(value as Array<*>)
+                map[key] = (value as Array<*>).contentToString()
             } else {
                 map[key] = value?.toString()
             }

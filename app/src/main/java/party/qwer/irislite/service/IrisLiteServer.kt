@@ -1,10 +1,8 @@
 package party.qwer.irislite.service
 
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Base64
 import android.widget.Toast
 import io.ktor.http.HttpStatusCode
@@ -141,14 +139,12 @@ object IrisLiteServer {
                 try {
                     val bytes = Base64.decode(base64, Base64.DEFAULT)
 
-                    // 1. Create a file in the internal cache directory (Not visible in Gallery)
                     val fileName = "iris_temp_${System.currentTimeMillis()}.png"
                     val file = java.io.File(context.cacheDir, fileName)
 
                     file.outputStream().use { it.write(bytes) }
                     savedFiles.add(file)
 
-                    // 2. Get URI using FileProvider (Requires setup in AndroidManifest.xml)
                     androidx.core.content.FileProvider.getUriForFile(
                         context,
                         "${context.packageName}.fileprovider",

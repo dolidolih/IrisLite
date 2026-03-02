@@ -19,7 +19,7 @@ fun MainScreen() {
     val darkBg = Color(0xFF121212)
     val textPrimary = Color(0xFFE3E3E3)
 
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Config & Test", "History")
 
     Scaffold(
