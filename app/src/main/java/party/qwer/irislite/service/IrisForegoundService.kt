@@ -1,5 +1,6 @@
 package party.qwer.irislite.service
 
+import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
@@ -9,44 +10,104 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import party.qwer.irislite.AppConfig
+import party.qwer.irislite.R
 
 class IrisForegroundService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private val CHANNEL_ID = "iris_service_channel"
 
+    companion object {
+        const val ACTION_START_SERVICE = "party.qwer.irislite.START"
+        const val ACTION_STOP_SERVICE = "party.qwer.irislite.STOP"
+        const val NOTIFICATION_ID = 1001
+    }
+
     override fun onCreate() {
         super.onCreate()
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "IrisLite::ServerWakeLock")
-        wakeLock?.acquire()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
 
-        val notification = Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("IrisLite Background Service")
-            .setContentText("Ktor server and listeners are active")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setOngoing(true)
-            .build()
+        when (intent?.action) {
+            ACTION_START_SERVICE -> startIrisLogic()
+            ACTION_STOP_SERVICE -> stopIrisLogic()
+            else -> {
+                if (AppConfig.isServiceEnabled) {
+                    startIrisLogic()
+                } else {
+                    stopIrisLogic()
+                }
+            }
+        }
+
+        val notification = buildServiceNotification(AppConfig.isServiceEnabled)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(1001, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
-            startForeground(1001, notification)
+            startForeground(NOTIFICATION_ID, notification)
+        }
+
+        return START_STICKY
+    }
+
+    @SuppressLint("WakelockTimeout")
+    private fun startIrisLogic() {
+        if (AppConfig.isServiceEnabled && wakeLock?.isHeld == true) return
+
+        wakeLock?.let {
+            if (!it.isHeld) it.acquire()
         }
 
         AppConfig.isServiceEnabled = true
         IrisLiteServer.start(applicationContext)
-
         scheduleHeartbeat()
+    }
 
-        return START_STICKY
+    private fun stopIrisLogic() {
+        cleanup()
+    }
+
+    private fun buildServiceNotification(isRunning: Boolean): Notification {
+        val title = if (isRunning) "IrisLite가 작동 중입니다." else "IrisLite가 작동 중이지 않습니다."
+        val buttonText = if (isRunning) "중지" else "시작"
+        val actionType = if (isRunning) ACTION_STOP_SERVICE else ACTION_START_SERVICE
+
+        val actionIntent = Intent(this, IrisForegroundService::class.java).apply {
+            action = actionType
+        }
+
+        val pendingIntent = PendingIntent.getService(
+            this,
+            if (isRunning) 1 else 2,
+            actionIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val actionIcon = Icon.createWithResource(this, R.mipmap.ic_launcher)
+
+        val actionBuilder = Notification.Action.Builder(
+            actionIcon,
+            buttonText,
+            pendingIntent
+        ).build()
+
+        return Notification.Builder(this, CHANNEL_ID)
+            .setContentTitle("IrisLite Background Service")
+            .setContentText(title)
+            .setSmallIcon(android.R.drawable.btn_star_big_off)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .addAction(actionBuilder)
+            .build()
     }
 
     override fun onTimeout(startId: Int, fgsType: Int) {

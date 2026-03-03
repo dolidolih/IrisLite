@@ -1,16 +1,17 @@
 package party.qwer.irislite.ui
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
-import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,6 +37,8 @@ import party.qwer.irislite.AppConfig
 import party.qwer.irislite.AppState
 import party.qwer.irislite.service.IrisForegroundService
 
+@Suppress("DEPRECATION")
+@SuppressLint("BatteryLife")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfigScreen() {
@@ -198,16 +201,14 @@ fun ConfigScreen() {
                         Switch(
                             checked = isEnabled,
                             onCheckedChange = { checked ->
-                                isEnabled = checked
-                                AppConfig.isServiceEnabled = checked
-                                val serviceIntent = Intent(context, IrisForegroundService::class.java)
-                                if (checked) {
-                                    context.startForegroundService(serviceIntent)
-                                    Toast.makeText(context, "Services Started. Check Permissions.", Toast.LENGTH_LONG).show()
-                                    configChanged = false
-                                } else {
-                                    context.stopService(serviceIntent)
+                                val action = if (checked) "party.qwer.irislite.START" else "party.qwer.irislite.STOP"
+                                val serviceIntent = Intent(context, IrisForegroundService::class.java).apply {
+                                    this.action = action
                                 }
+                                context.startForegroundService(serviceIntent)
+
+                                isEnabled = checked
+                                configChanged = false
                             }
                         )
                     }
@@ -287,7 +288,7 @@ fun ConfigScreen() {
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Send, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(8.dp))
                         Text("Reply 테스트", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }

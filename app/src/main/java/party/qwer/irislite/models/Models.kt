@@ -1,3 +1,5 @@
+@file:Suppress("PropertyName")
+
 package party.qwer.irislite.models
 
 import android.app.PendingIntent
@@ -34,9 +36,9 @@ data class IrisJsonData(
     val _id: String? = null,
     val id: String?,
     val type: String? = null,
-    val chat_id: String?,
+    @Suppress("PropertyName") val chat_id: String?,
     val scope: String? = null,
-    val user_id: String?,
+    @Suppress("PropertyName") val user_id: String?,
     val message: String,
     val attachment: String? = null,
     val created_at: String? = null,

@@ -9,9 +9,9 @@ class IrisLiteApplication : Application() {
         super.onCreate()
         AppConfig.init(this)
 
-        if (AppConfig.isServiceEnabled) {
-            val serviceIntent = Intent(this, IrisForegroundService::class.java)
-            startForegroundService(serviceIntent)
+        val serviceIntent = Intent(this, IrisForegroundService::class.java).apply {
+            if (AppConfig.isServiceEnabled) action = "party.qwer.irislite.START"
         }
+        startForegroundService(serviceIntent)
     }
 }
