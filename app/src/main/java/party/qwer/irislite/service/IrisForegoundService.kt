@@ -24,6 +24,7 @@ class IrisForegroundService : Service() {
     companion object {
         const val ACTION_START_SERVICE = "party.qwer.irislite.START"
         const val ACTION_STOP_SERVICE = "party.qwer.irislite.STOP"
+        const val ACTION_EXIT_SERVICE = "party.qwer.irislite.EXIT"
         const val NOTIFICATION_ID = 1001
     }
 
@@ -37,6 +38,12 @@ class IrisForegroundService : Service() {
         createNotificationChannel()
 
         when (intent?.action) {
+            ACTION_EXIT_SERVICE -> {
+                cleanup()
+                stopForeground(Service.STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
             ACTION_START_SERVICE -> startIrisLogic()
             ACTION_STOP_SERVICE -> stopIrisLogic()
             else -> {
@@ -81,33 +88,63 @@ class IrisForegroundService : Service() {
         val buttonText = if (isRunning) "중지" else "시작"
         val actionType = if (isRunning) ACTION_STOP_SERVICE else ACTION_START_SERVICE
 
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+        val contentPendingIntent = launchIntent?.let {
+            PendingIntent.getActivity(
+                this,
+                0,
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        val actionIcon = Icon.createWithResource(this, R.mipmap.ic_launcher)
+
         val actionIntent = Intent(this, IrisForegroundService::class.java).apply {
             action = actionType
         }
-
         val pendingIntent = PendingIntent.getService(
             this,
             if (isRunning) 1 else 2,
             actionIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
-        val actionIcon = Icon.createWithResource(this, R.mipmap.ic_launcher)
-
         val actionBuilder = Notification.Action.Builder(
             actionIcon,
             buttonText,
             pendingIntent
         ).build()
 
-        return Notification.Builder(this, CHANNEL_ID)
+        val exitIntent = Intent(this, IrisForegroundService::class.java).apply {
+            action = ACTION_EXIT_SERVICE
+        }
+        val exitPendingIntent = PendingIntent.getService(
+            this,
+            3,
+            exitIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val exitAction = Notification.Action.Builder(
+            actionIcon,
+            "종료",
+            exitPendingIntent
+        ).build()
+
+        val builder = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("IrisLite Background Service")
             .setContentText(title)
             .setSmallIcon(android.R.drawable.btn_star_big_off)
             .setOngoing(true)
+            .setAutoCancel(false)
             .setOnlyAlertOnce(true)
             .addAction(actionBuilder)
-            .build()
+            .addAction(exitAction)
+
+        contentPendingIntent?.let {
+            builder.setContentIntent(it)
+        }
+
+        return builder.build()
     }
 
     override fun onTimeout(startId: Int, fgsType: Int) {
