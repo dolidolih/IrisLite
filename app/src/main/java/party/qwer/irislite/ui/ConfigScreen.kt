@@ -1,18 +1,14 @@
 package party.qwer.irislite.ui
 
-import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.os.PowerManager
-import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,7 +19,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.CoroutineScope
@@ -33,12 +28,11 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import party.qwer.irislite.AppColors
 import party.qwer.irislite.AppConfig
 import party.qwer.irislite.AppState
 import party.qwer.irislite.service.IrisForegroundService
 
-@Suppress("DEPRECATION")
-@SuppressLint("BatteryLife")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfigScreen() {
@@ -56,289 +50,172 @@ fun ConfigScreen() {
     var testMessage by remember { mutableStateOf("") }
     var configChanged by remember { mutableStateOf(false) }
 
-    var hasNotificationPermission by remember { mutableStateOf(false) }
-    var hasOverlayPermission by remember { mutableStateOf(false) }
-    var hasBatteryPermission by remember { mutableStateOf(false) }
-
-    var showNotificationDialog by remember { mutableStateOf(false) }
-    var showOverlayDialog by remember { mutableStateOf(false) }
-
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 isEnabled = AppConfig.isServiceEnabled
-
-                val enabledPackages = NotificationManagerCompat.getEnabledListenerPackages(context)
-                hasNotificationPermission = enabledPackages.contains(context.packageName)
-                hasOverlayPermission = Settings.canDrawOverlays(context)
-
-                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-                hasBatteryPermission = pm.isIgnoringBatteryOptimizations(context.packageName)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val requestPermission = {
-        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-    }
-    val requestOverlayPermission = {
-        val intent = Intent(
-            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-            Uri.parse("package:${context.packageName}")
-        )
-        context.startActivity(intent)
-    }
-    val requestBatteryPermission = {
-        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-            data = Uri.parse("package:${context.packageName}")
-        }
-        context.startActivity(intent)
-    }
-
-    val darkSurface = Color(0xFF1E1E1E)
-    val textPrimary = Color(0xFFE3E3E3)
-    val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedTextColor = textPrimary, unfocusedTextColor = textPrimary,
-        focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = Color(0xFF444444)
+    val seamlessTextFieldColors = TextFieldDefaults.colors(
+        focusedContainerColor = AppColors.InputBg,
+        unfocusedContainerColor = AppColors.InputBg,
+        disabledContainerColor = AppColors.InputBg,
+        focusedIndicatorColor = Color.Transparent,
+        unfocusedIndicatorColor = Color.Transparent,
+        disabledIndicatorColor = Color.Transparent,
+        focusedTextColor = AppColors.TextMain,
+        unfocusedTextColor = AppColors.TextMain,
+        focusedLabelColor = AppColors.PrimaryAccent,
+        unfocusedLabelColor = AppColors.TextSub,
+        cursorColor = AppColors.PrimaryAccent
     )
 
-    if (showNotificationDialog) {
-        AlertDialog(
-            onDismissRequest = { showNotificationDialog = false },
-            containerColor = darkSurface,
-            titleContentColor = textPrimary,
-            textContentColor = textPrimary,
-            shape = RoundedCornerShape(16.dp),
-            title = {
-                Text(text = "[필수] 알림 읽기 권한 안내", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Text(text = "IrisLite은 알림기반으로 작동하는 앱으로 알림 읽기 권한은 앱 기능을 수행하기 위한 필수 권한입니다. 이 권한을 설정하지 않으면 앱의 기능 대부분을 이용할 수 없습니다.\n\n권한 설정 화면으로 이동하시겠습니까?")
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showNotificationDialog = false
-                    requestPermission()
-                }) {
-                    Text("동의 및 설정", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNotificationDialog = false }) {
-                    Text("미동의", color = Color(0xFFAAAAAA))
-                }
-            }
-        )
-    }
-
-    if (showOverlayDialog) {
-        AlertDialog(
-            onDismissRequest = { showOverlayDialog = false },
-            containerColor = darkSurface,
-            titleContentColor = textPrimary,
-            textContentColor = textPrimary,
-            shape = RoundedCornerShape(16.dp),
-            title = {
-                Text(text = "[선택] 다른 앱 위에 표시 권한 안내", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Text(text = "사진 공유 후 원활하게 홈 화면으로 이동하고, 알림 수신을 지속적으로 하기 위해 필요한 권한입니다.\n\n선택 권한으로 미사용 시에도 앱 이용은 가능하나, 지속적인 알림 수신이 어려워질 수 있습니다.\n\n설정 화면으로 이동하시겠습니까?")
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showOverlayDialog = false
-                    requestOverlayPermission()
-                }) {
-                    Text("동의 및 설정", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showOverlayDialog = false }) {
-                    Text("미동의", color = Color(0xFFAAAAAA))
-                }
-            }
-        )
-    }
+    val elementShape = RoundedCornerShape(12.dp)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
         contentPadding = PaddingValues(bottom = 32.dp, top = 8.dp)
     ) {
         item {
-            ElevatedCard(
+            Text("서비스 설정", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = AppColors.TextMain)
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = darkSurface, contentColor = textPrimary)
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = AppColors.CardBg)
             ) {
-                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
-                        Text("설정", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    }
-
+                Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("서비스 상태", fontWeight = FontWeight.SemiBold)
+                            Text("백그라운드 서비스", fontWeight = FontWeight.SemiBold, color = AppColors.TextMain)
                             Text(
-                                text = if (isEnabled) "Running" else "Stopped",
+                                text = if (isEnabled) "작동중" else "정지됨",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (isEnabled) Color(0xFF4CAF50) else Color(0xFFAAAAAA)
+                                color = if (isEnabled) AppColors.SuccessVivid else AppColors.TextSub
                             )
                         }
-
                         if (configChanged) {
-                            Text("재시작 필요", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color(0xFFFF5252), modifier = Modifier.padding(end = 12.dp))
+                            Text("재시작 필요", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.ErrorVivid, modifier = Modifier.padding(end = 12.dp))
                         }
-
                         Switch(
                             checked = isEnabled,
                             onCheckedChange = { checked ->
                                 val action = if (checked) "party.qwer.irislite.START" else "party.qwer.irislite.STOP"
-                                val serviceIntent = Intent(context, IrisForegroundService::class.java).apply {
-                                    this.action = action
-                                }
+                                val serviceIntent = Intent(context, IrisForegroundService::class.java).apply { this.action = action }
                                 context.startForegroundService(serviceIntent)
-
                                 isEnabled = checked
                                 configChanged = false
-                            }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = AppColors.TextMain,
+                                checkedTrackColor = AppColors.PrimaryAccent,
+                                uncheckedThumbColor = AppColors.TextSub,
+                                uncheckedTrackColor = AppColors.InputBg,
+                                uncheckedBorderColor = Color.Transparent
+                            )
                         )
                     }
 
-                    HorizontalDivider(color = Color(0xFF444444))
-
-                    OutlinedTextField(
+                    TextField(
                         value = endpoint,
                         onValueChange = { endpoint = it; AppConfig.webEndpoint = it; configChanged = true },
-                        label = { Text("Webserver Endpoint") },
-                        leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
+                        label = { Text("웹서버 엔드포인트") },
+                        leadingIcon = { Icon(Icons.Default.Link, contentDescription = null, tint = AppColors.TextSub) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp), singleLine = true, colors = textFieldColors
+                        shape = elementShape,
+                        singleLine = true,
+                        colors = seamlessTextFieldColors
                     )
 
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        TextField(
                             value = sendRate,
                             onValueChange = { sendRate = it; AppConfig.sendRate = it.toLongOrNull() ?: 500L; configChanged = true },
-                            label = { Text("SendRate(ms)") },
+                            label = { Text("발송주기(ms)") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), singleLine = true, colors = textFieldColors
+                            modifier = Modifier.weight(1f),
+                            shape = elementShape,
+                            singleLine = true,
+                            colors = seamlessTextFieldColors
                         )
-                        OutlinedTextField(
+                        TextField(
                             value = port,
                             onValueChange = { port = it; AppConfig.serverPort = it.toIntOrNull() ?: 3000; configChanged = true },
-                            label = { Text("Server Port") },
+                            label = { Text("서비스포트") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), singleLine = true, colors = textFieldColors
+                            modifier = Modifier.weight(1f),
+                            shape = elementShape,
+                            singleLine = true,
+                            colors = seamlessTextFieldColors
                         )
-                    }
-
-                    if (!hasNotificationPermission) {
-                        Button(
-                            onClick = { showNotificationDialog = true },
-                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                        ) {
-                            Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("[필수] 알림수신 권한설정")
-                        }
-                    }
-
-                    if (!hasOverlayPermission) {
-                        Button(
-                            onClick = { showOverlayDialog = true },
-                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                        ) {
-                            Icon(Icons.Default.Layers, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("[선택] 앱 위에 그리기 권한설정")
-                        }
-                    }
-
-                    if (!hasBatteryPermission) {
-                        Button(
-                            onClick = { requestBatteryPermission() },
-                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Icon(Icons.Default.BatteryAlert, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("[필수] 백그라운드 배터리 제한 해제")
-                        }
                     }
                 }
             }
         }
 
         item {
-            ElevatedCard(
+            Text("답장 테스트", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = AppColors.TextMain)
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = darkSurface, contentColor = textPrimary)
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = AppColors.CardBg)
             ) {
-                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Reply 테스트", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    }
-
+                Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     ExposedDropdownMenuBox(
                         expanded = testRoomExpanded,
                         onExpandedChange = { testRoomExpanded = it },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        OutlinedTextField(
+                        TextField(
                             value = testRoom,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("대상 Room Id 또는 이름") },
+                            label = { Text("방 이름 또는 ID") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = testRoomExpanded) },
                             modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = elementShape,
                             singleLine = true,
-                            colors = textFieldColors
+                            colors = seamlessTextFieldColors
                         )
                         ExposedDropdownMenu(
                             expanded = testRoomExpanded,
-                            onDismissRequest = { testRoomExpanded = false }
+                            onDismissRequest = { testRoomExpanded = false },
+                            modifier = Modifier.background(AppColors.CardBg)
                         ) {
                             if (AppState.storedRooms.isEmpty()) {
-                                DropdownMenuItem(
-                                    text = { Text("저장된 방 없음") },
-                                    onClick = { testRoomExpanded = false }
-                                )
+                                DropdownMenuItem(text = { Text("저장된 방 없음", color = AppColors.TextSub) }, onClick = { testRoomExpanded = false })
                             } else {
                                 AppState.storedRooms.forEach { room ->
                                     DropdownMenuItem(
-                                        text = { Text(room) },
-                                        onClick = {
-                                            testRoom = room
-                                            testRoomExpanded = false
-                                        }
+                                        text = { Text(room.name, color = AppColors.TextMain) },
+                                        onClick = { testRoom = room.name; testRoomExpanded = false }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(room.id, color = AppColors.TextMain) },
+                                        onClick = { testRoom = room.id; testRoomExpanded = false }
                                     )
                                 }
                             }
                         }
                     }
 
-                    OutlinedTextField(
+                    TextField(
                         value = testMessage,
                         onValueChange = { testMessage = it },
                         label = { Text("메시지") },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors
+                        shape = elementShape,
+                        colors = seamlessTextFieldColors
                     )
 
                     Button(
@@ -349,16 +226,17 @@ fun ConfigScreen() {
                                 val jsonString = """{"type":"text","room":"$testRoom","data":"$testMessage"}"""
                                 val body = jsonString.toRequestBody("application/json".toMediaType())
                                 val req = Request.Builder().url("http://127.0.0.1:${AppConfig.serverPort}/reply").post(body).build()
-
-                                try {
-                                    client.newCall(req).execute().close()
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
+                                try { client.newCall(req).execute().close() } catch (e: Exception) { e.printStackTrace() }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
-                    ) { Text("Send") }
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        shape = elementShape,
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.PrimaryAccent, contentColor = AppColors.TextMain)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("메시지 보내기", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

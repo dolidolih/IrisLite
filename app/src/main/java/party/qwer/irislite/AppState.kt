@@ -3,6 +3,7 @@ package party.qwer.irislite
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.MutableSharedFlow
 import party.qwer.irislite.models.NotificationEvent
 
@@ -29,8 +30,22 @@ object AppConfig {
         set(value) = prefs.edit().putInt("serverPort", value).apply()
 }
 
+data class StoredRoom(val name: String, val id: String)
+
+object AppColors {
+    val DarkBg = Color(0xFF131318)
+    val CardBg = Color(0xFF272738)
+    val InputBg = Color(0xFF161622)
+    val PrimaryAccent = Color(0xFF815AF4)
+    val TextMain = Color(0xFFFFFFFF)
+    val TextSub = Color(0xFF9E9EA8)
+    val SuccessVivid = Color(0xFF00E676)
+    val ErrorVivid = Color(0xFFFF4B55)
+    val BottomNavBg = Color(0xFF161622)
+}
+
 object AppState {
     val notificationHistory = mutableStateListOf<NotificationEvent>()
-    val storedRooms = mutableStateListOf<String>()
+    val storedRooms = mutableStateListOf<StoredRoom>()
     val wsBroadcastFlow = MutableSharedFlow<String>(extraBufferCapacity = 64)
 }

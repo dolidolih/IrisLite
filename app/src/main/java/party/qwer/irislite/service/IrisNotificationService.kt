@@ -1,3 +1,7 @@
+/*
+Parser reference :
+https://github.com/mooner1022/StarLight/blob/nightly/app/src/main/java/dev/mooner/starlight/listener/specs/AndroidRParserSpec.kt
+*/
 package party.qwer.irislite.service
 
 import android.app.Notification
@@ -21,16 +25,12 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import party.qwer.irislite.AppConfig
 import party.qwer.irislite.AppState
+import party.qwer.irislite.StoredRoom
 import party.qwer.irislite.models.IrisJsonData
 import party.qwer.irislite.models.NotificationEvent
 import party.qwer.irislite.models.NotificationPayload
 import party.qwer.irislite.models.ReplyAction
 import java.io.ByteArrayOutputStream
-
-/*
-Parser reference :
-https://github.com/mooner1022/StarLight/blob/nightly/app/src/main/java/dev/mooner/starlight/listener/specs/AndroidRParserSpec.kt
-*/
 
 class IrisNotificationService : NotificationListenerService() {
     private val httpClient = OkHttpClient()
@@ -77,10 +77,7 @@ class IrisNotificationService : NotificationListenerService() {
             e.printStackTrace()
         }
 
-        val largeIconExtra = try {
-            extras.get(Notification.EXTRA_LARGE_ICON)
-        } catch (e: Exception) { null }
-
+        val largeIconExtra = try { extras.get(Notification.EXTRA_LARGE_ICON) } catch (e: Exception) { null }
         val rawDump = dumpBundle(extras).toString()
 
         val event = NotificationEvent(
@@ -94,10 +91,7 @@ class IrisNotificationService : NotificationListenerService() {
             rawDump = rawDump
         )
 
-        extractAndStoreReplyAction(notification, room)
-        if (roomId.isNotEmpty()) {
-            extractAndStoreReplyAction(notification, roomId)
-        }
+        extractAndStoreReplyAction(notification, room, roomId)
 
         coroutineScope.launch(Dispatchers.Main) {
             AppState.notificationHistory.add(0, event)
@@ -108,7 +102,6 @@ class IrisNotificationService : NotificationListenerService() {
 
         coroutineScope.launch {
             var profileImageBase64: String? = null
-
             try {
                 val bitmapToCompress: Bitmap? = when (largeIconExtra) {
                     is Bitmap -> largeIconExtra
@@ -116,10 +109,8 @@ class IrisNotificationService : NotificationListenerService() {
                         val drawable = largeIconExtra.loadDrawable(this@IrisNotificationService)
                         (drawable as? BitmapDrawable)?.bitmap
                     }
-
                     else -> null
                 }
-
                 if (bitmapToCompress != null) {
                     val baos = ByteArrayOutputStream()
                     bitmapToCompress.compress(Bitmap.CompressFormat.JPEG, 70, baos)
@@ -129,27 +120,9 @@ class IrisNotificationService : NotificationListenerService() {
                 e.printStackTrace()
             }
 
-            val innerJson = IrisJsonData(
-                id = chatLogId.toString(),
-                chat_id = roomId,
-                user_id = senderId,
-                message = text
-            )
-
-            val payload = NotificationPayload(
-                msg = text,
-                room = room,
-                sender = senderName,
-                is_lite = true,
-                is_group_chat = isGroupChat,
-                profile_image = profileImageBase64,
-                json = innerJson
-            )
-
-            val json = Json {
-                encodeDefaults = true
-            }
-
+            val innerJson = IrisJsonData(id = chatLogId.toString(), chat_id = roomId, user_id = senderId, message = text)
+            val payload = NotificationPayload(msg = text, room = room, sender = senderName, is_lite = true, is_group_chat = isGroupChat, profile_image = profileImageBase64, json = innerJson)
+            val json = Json { encodeDefaults = true }
             val jsonPayload = json.encodeToString(payload)
 
             IrisLiteServer.broadcastToClients(jsonPayload)
@@ -170,8 +143,7 @@ class IrisNotificationService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         if (AppConfig.isServiceEnabled) {
-            val serviceIntent = Intent(this, IrisForegroundService::class.java)
-            startForegroundService(serviceIntent)
+            startForegroundService(Intent(this, IrisForegroundService::class.java))
         }
     }
 
@@ -180,16 +152,20 @@ class IrisNotificationService : NotificationListenerService() {
         requestRebind(android.content.ComponentName(this, IrisNotificationService::class.java))
     }
 
-    private fun extractAndStoreReplyAction(notification: Notification, roomKey: String) {
+    private fun extractAndStoreReplyAction(notification: Notification, roomName: String, roomId: String) {
         val actions = notification.actions ?: return
         for (action in actions) {
             val remoteInputs = action.remoteInputs ?: continue
             for (remoteInput in remoteInputs) {
                 if (remoteInput.allowFreeFormInput) {
-                    ReplyManager.replyActions[roomKey] = ReplyAction(action.actionIntent, remoteInput)
+                    ReplyManager.replyActions[roomName] = ReplyAction(action.actionIntent, remoteInput)
+                    if (roomId.isNotEmpty()) {
+                        ReplyManager.replyActions[roomId] = ReplyAction(action.actionIntent, remoteInput)
+                    }
                     coroutineScope.launch(Dispatchers.Main) {
-                        if (!AppState.storedRooms.contains(roomKey)) {
-                            AppState.storedRooms.add(roomKey)
+                        val exists = AppState.storedRooms.any { it.name == roomName && it.id == roomId }
+                        if (!exists) {
+                            AppState.storedRooms.add(StoredRoom(roomName, roomId))
                         }
                     }
                     return
@@ -203,13 +179,9 @@ class IrisNotificationService : NotificationListenerService() {
         if (bundle == null) return map
         for (key in bundle.keySet()) {
             val value = bundle.get(key)
-            if (value is Bundle) {
-                map[key] = dumpBundle(value)
-            } else if (value != null && value.javaClass.isArray) {
-                map[key] = (value as Array<*>).contentToString()
-            } else {
-                map[key] = value?.toString()
-            }
+            if (value is Bundle) map[key] = dumpBundle(value)
+            else if (value != null && value.javaClass.isArray) map[key] = (value as Array<*>).contentToString()
+            else map[key] = value?.toString()
         }
         return map
     }
